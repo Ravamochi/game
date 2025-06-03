@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiz Tic Tac Toe vs Komputer</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #c9d6ff, #e2e2e2);
+      padding: 2rem;
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-weight: 700;
+      color: #000;
+      text-shadow: none;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .cell {
+      aspect-ratio: 1 / 1;
+      background-color: #ffffffcc;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2em;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 10px;
+      transition: transform 0.2s, background-color 0.3s;
+    }
+
+    .cell:hover {
+      transform: scale(1.05);
+      background-color: #f0f8ff;
+    }
+
+    #question-box {
+      background: #ffffffdd;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2rem;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    #status, #scoreboard {
+      font-size: 1.25rem;
+      color: #000;
+      text-shadow: none;
+    }
+
+    #timer {
+      font-size: 1.2rem;
+      color: red;
+    }
+  </style>
+</head>
+<body class="container text-center">
+  <h1 class="mb-3">Quiz Tic Tac Toe vs Komputer</h1>
+  <p id="scoreboard" class="fw-semibold mb-3">Skor – Pemain X: 0 | Komputer: 0<br>
+    <select id='level' class='form-select-sm mt-2'>
+      <option value='easy'>Mudah</option>
+      <option value='medium'>Sedang</option>
+      <option value='hard'>Sulit</option>
+    </select>
+  </p>
+
+  <div id="question-box" style="display:none">
+    <p id="question-text" class="mb-3"></p>
+    <p id="timer" class="text-danger fw-bold"></p>
+    <input type="text" id="answer" class="form-control mb-3" placeholder="Jawaban Anda" />
+    <button class="btn btn-success" onclick="submitAnswer()">Kirim Jawaban</button>
+  </div>
+
+  <div class="board mb-4" id="board"></div>
+  <p id="status" class="fw-semibold"></p>
+
+  <!-- Tombol keluar game -->
+  <button id="exit-button" class="btn btn-danger mt-3">Keluar Game</button>
+
+  <script>
+    const boardElement = document.getElementById('board');
+    const questionBox = document.getElementById('question-box');
+    const questionText = document.getElementById('question-text');
+    const answerInput = document.getElementById('answer');
+    const statusText = document.getElementById('status');
+    const scoreboard = document.getElementById('scoreboard');
+    const timerElement = document.getElementById('timer');
+    const levelSelect = document.getElementById('level');
+
+    const questions = [
+      { q: 'Apa nama hewan yang memiliki belalai?', a: 'gajah' },
+      { q: 'Hewan apa yang bisa terbang dan memiliki paruh?', a: 'burung' },
+      { q: 'Apa nama hewan yang hidup di laut dan memiliki delapan lengan?', a: 'gurita' },
+      { q: 'Hewan apa yang dikenal sebagai raja hutan?', a: 'singa' },
+      { q: 'Apa nama hewan yang lambat dan membawa rumah di punggungnya?', a: 'siput' },
+      { q: 'Apa nama hewan yang suka makan wortel dan melompat-lompat?', a: 'kelinci' },
+      { q: 'Hewan apa yang dikenal dengan leher panjangnya?', a: 'jerapah' },
+      { q: 'Hewan apa yang memiliki loreng hitam putih?', a: 'zebra' },
+      { q: 'Apa nama hewan berkaki delapan yang bisa membuat jaring?', a: 'laba-laba' },
+      { q: 'Apa hewan peliharaan yang suka menggonggong?', a: 'anjing' },
+      { q: 'Apa nama hewan yang suka susu dan mengeong?', a: 'kucing' },
+      { q: 'Hewan kecil bersayap yang suka bunga?', a: 'kupu-kupu' },
+      { q: 'Hewan laut besar dengan semprot air?', a: 'paus' },
+      { q: 'Apa nama hewan berduri yang bisa menggulung tubuh?', a: 'landak' },
+      { q: 'Apa nama burung yang bisa menirukan suara manusia?', a: 'beo' },
+      { q: 'Berapakah 7 + 5?', a: '12' },
+      { q: 'Hitung: 10 - 4', a: '6' },
+      { q: 'Berapakah 6 + 9?', a: '15' },
+      { q: 'Hitung: 14 - 7', a: '7' },
+      { q: 'Berapakah 3 + 8?', a: '11' },
+      { q: 'Hitung: 20 - 5', a: '15' },
+      { q: 'Berapakah 4 + 6?', a: '10' },
+      { q: 'Hitung: 18 - 9', a: '9' },
+      { q: 'Berapakah 13 + 2?', a: '15' },
+      { q: 'Hitung: 16 - 6', a: '10' }
+    ];
+
+    let easyQuestions = questions.filter(q => q.q.includes('+') || q.q.includes('-'));
+    let mediumQuestions = questions.filter(q => !q.q.includes('+') && !q.q.includes('-')).slice(0, 7);
+    let hardQuestions = questions.filter(q => !q.q.includes('+') && !q.q.includes('-')).slice(7);
+    let availableQuestions = [...easyQuestions];
+
+    let currentLevel = 'easy';
+    levelSelect.addEventListener('change', (e) => {
+      currentLevel = e.target.value;
+      if (currentLevel === 'easy') availableQuestions = [...easyQuestions];
+      else if (currentLevel === 'medium') availableQuestions = [...mediumQuestions];
+      else if (currentLevel === 'hard') availableQuestions = [...hardQuestions];
+    });
+
+    let currentPlayer = 'X';
+    let board = Array(16).fill(null);
+    let currentCellIndex = null;
+    let currentQuestion = null;
+    let scoreX = 0;
+    let scoreO = 0;
+    let countdown = 20;
+    let timerInterval = null;
+
+    function renderBoard() {
+      boardElement.innerHTML = '';
+      board.forEach((cell, index) => {
+        const cellDiv = document.createElement('div');
+        cellDiv.className = 'cell';
+        cellDiv.textContent = cell;
+        cellDiv.onclick = () => handleCellClick(index);
+        boardElement.appendChild(cellDiv);
+      });
+    }
+
+    function getRandomQuestion() {
+      if (availableQuestions.length === 0) {
+        if (currentLevel === 'easy') availableQuestions = [...easyQuestions];
+        else if (currentLevel === 'medium') availableQuestions = [...mediumQuestions];
+        else if (currentLevel === 'hard') availableQuestions = [...hardQuestions];
+      }
+      const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+      return availableQuestions.splice(randomIndex, 1)[0];
+    }
+
+    function startTimer() {
+      countdown = 20;
+      timerElement.textContent = `Waktu tersisa: ${countdown} detik`;
+      timerInterval = setInterval(() => {
+        countdown--;
+        timerElement.textContent = `Waktu tersisa: ${countdown} detik`;
+        if (countdown < 0) {
+          clearInterval(timerInterval);
+          handleTimeout();
+        }
+      }, 1000);
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+      timerElement.textContent = '';
+    }
+
+    function handleCellClick(index) {
+      if (board[index] || questionBox.style.display === 'block' || currentPlayer === 'O') return;
+      currentCellIndex = index;
+      currentQuestion = getRandomQuestion();
+      questionText.textContent = `Pemain ${currentPlayer}, jawab pertanyaan: ${currentQuestion.q}`;
+      questionBox.style.display = 'block';
+      answerInput.value = '';
+      startTimer();
+    }
+
+    function submitAnswer() {
+      stopTimer();
+      const userAnswer = answerInput.value.trim().toLowerCase();
+      if (userAnswer === currentQuestion.a.toLowerCase()) {
+        board[currentCellIndex] = currentPlayer;
+        if (checkWin()) {
+          scoreX++;
+          updateScore();
+          statusText.textContent = `🎉 Pemain ${currentPlayer} menang! Permainan akan dimulai ulang...`;
+          disableBoard();
+          setTimeout(() => { resetGame(); }, 3000);
+          return;
+        } else if (!board.includes(null)) {
+          statusText.textContent = '⚖️ Seri!';
+          setTimeout(() => { resetGame(); }, 3000);
+          return;
+        } else {
+          currentPlayer = 'O';
+          renderBoard();
+          setTimeout(aiMove, 1000);
+        }
+      } else {
+        statusText.textContent = `❌ Salah! Sekarang giliran Komputer`;
+        currentPlayer = 'O';
+        renderBoard();
+        setTimeout(aiMove, 1000);
+      }
+      questionBox.style.display = 'none';
+    }
+
+    function handleTimeout() {
+      statusText.textContent = `⏰ Waktu habis! Sekarang giliran Komputer.`;
+      questionBox.style.display = 'none';
+      currentPlayer = 'O';
+      renderBoard();
+      setTimeout(aiMove, 1000);
+    }
+
+    function aiMove() {
+      const available = board.map((val, i) => val === null ? i : null).filter(i => i !== null);
+      if (available.length === 0) return;
+
+      let index;
+
+      if (currentLevel === 'easy') {
+        index = available[Math.floor(Math.random() * available.length)];
+      } else if (currentLevel === 'medium') {
+        index = findWinningMove('X') ?? available[Math.floor(Math.random() * available.length)];
+      } else if (currentLevel === 'hard') {
+        index = findWinningMove('O') ?? findWinningMove('X') ?? findBestMove() ?? available[Math.floor(Math.random() * available.length)];
+      }
+
+      board[index] = 'O';
+
+      if (checkWin()) {
+        scoreO++;
+        updateScore();
+        statusText.textContent = `🤖 Komputer menang! Permainan akan dimulai ulang...`;
+        disableBoard();
+        setTimeout(() => { resetGame(); }, 3000);
+      } else if (!board.includes(null)) {
+        statusText.textContent = '⚖️ Seri!';
+        setTimeout(() => { resetGame(); }, 3000);
+      } else {
+        currentPlayer = 'X';
+        renderBoard();
+      }
+    }
+
+    function findWinningMove(player) {
+      const winPatterns = [
+        [0,1,2,3], [4,5,6,7], [8,9,10,11], [12,13,14,15],
+        [0,4,8,12], [1,5,9,13], [2,6,10,14], [3,7,11,15],
+        [0,5,10,15], [3,6,9,12]
+      ];
+      for (const pattern of winPatterns) {
+        const values = pattern.map(i => board[i]);
+        const countPlayer = values.filter(v => v === player).length;
+        const countEmpty = values.filter(v => v === null).length;
+        if (countPlayer === 3 && countEmpty === 1) {
+          return pattern.find(i => board[i] === null);
+        }
+      }
+      return null;
+    }
+
+    function findBestMove() {
+      const priority = [5, 6, 9, 10, 0, 3, 12, 15];
+      return priority.find(i => board[i] === null) ?? null;
+    }
+
+    function checkWin() {
+      const winPatterns = [
+        [0,1,2,3], [4,5,6,7], [8,9,10,11], [12,13,14,15],
+        [0,4,8,12], [1,5,9,13], [2,6,10,14], [3,7,11,15],
+        [0,5,10,15], [3,6,9,12]
+      ];
+      return winPatterns.some(pattern => {
+        const [a, b, c, d] = pattern;
+        return board[a] && board[a] === board[b] && board[a] === board[c] && board[a] === board[d];
+      });
+    }
+
+    function disableBoard() {
+      boardElement.querySelectorAll('.cell').forEach(cell => cell.onclick = null);
+    }
+
+    function resetGame() {
+      board = Array(16).fill(null);
+      currentPlayer = 'X';
+      statusText.textContent = '';
+      renderBoard();
+    }
+
+    function updateScore() {
+      if (scoreX >= 5 || scoreO >= 5) {
+        alert("🏁 Permainan selesai! Skor direset.");
+        scoreX = 0;
+        scoreO = 0;
+      }
+      scoreboard.innerHTML = `Skor – Pemain X: ${scoreX} | Komputer: ${scoreO}<br>
+        <select id='level' class='form-select-sm mt-2'>
+          <option value='easy'>Mudah</option>
+          <option value='medium'>Sedang</option>
+          <option value='hard'>Sulit</option>
+        </select>`;
+      document.getElementById('level').value = currentLevel;
+      document.getElementById('level').addEventListener('change', (e) => {
+        currentLevel = e.target.value;
+        if (currentLevel === 'easy') availableQuestions = [...easyQuestions];
+        else if (currentLevel === 'medium') availableQuestions = [...mediumQuestions];
+        else if (currentLevel === 'hard') availableQuestions = [...hardQuestions];
+      });
+    }
+
+    // Tombol keluar game
+    document.getElementById('exit-button').addEventListener('click', () => {
+      if (confirm("Apakah Anda yakin ingin keluar dari permainan?")) {
+        window.location.href = "https://www.google.com";
+      }
+    });
+
+    renderBoard();
+  </script>
+</body>
+</html>
